@@ -223,7 +223,7 @@ def analyze_steps(
         # ax.set_axisbelow(True)
         export_plot(fig, output_dir / f"steps_weekday.{image_format}", image_format)
 
-        
+
 def analyze_distance(
     df: pd.DataFrame,
     year: int,
@@ -281,18 +281,28 @@ def analyze_distance(
         export_plot(fig, output_dir / f"distance_weekday.{image_format}", image_format)
 
 
-def parse_sleep_value(value: Any) -> dict[str, Any]:
-    data = safe_json_loads(value)
-    return {
-        "duration": data.get("duration", 0),
+def parse_sleep_value(value: Any) -> dict[str, int]:
+    data: list[dict[str, int]] = safe_json_loads(value)
+    sleep_info = {
+        "total_duration": data.get("total_duration", 0),
         "sleep_awake": data.get("sleep_awake_duration", 0),
         "sleep_light": data.get("sleep_light_duration", 0),
         "sleep_deep": data.get("sleep_deep_duration", 0),
         "sleep_rem": data.get("sleep_rem_duration", 0),
-        "awake_count": data.get("awake_count", 0),
-        "bedtime": data.get("bedtime", 0),
-        "wakeup": data.get("wake_up_time", 0),
+        "score": data.get("sleep_score", 0),
     }
+
+    longest_sleep_segment = max(
+        (item for item in data.get("segment_details", [])),
+        key=lambda x: x.get("duration", 0),
+        default={},
+    )
+    sleep_info["duration"] = longest_sleep_segment.get("duration", 0)
+    sleep_info["bedtime"] = longest_sleep_segment.get("bedtime", 0)
+    sleep_info["wakeup"] = longest_sleep_segment.get("wake_up_time", 0)
+
+    sleep_info["sleep_nap"] = sleep_info["total_duration"] - sleep_info.get("duration", 0)
+    return sleep_info
 
 
 def normalize_bedtime_minutes(series: pd.Series) -> pd.Series:
@@ -318,17 +328,14 @@ def analyze_sleep(
     font_family: str,
 ) -> None:
     """Parse sleep data and generate plots."""
-    sleep_raw = df[
-        df["Key"].isin(["sleep", "watch_night_sleep"])
-        & df["Value"].str.contains("item", na=False)
-    ].copy()
-    if sleep_raw.empty:
+    daily_sleep = df[(df["Tag"] == "daily_report") & (df["Key"] == "sleep")].copy()
+    if daily_sleep.empty:
         print(f"No sleep data for year {year}.")
         return
 
     # Parse sleep data into structured columns
-    sleep_components = sleep_raw["Value"].apply(parse_sleep_value).apply(pd.Series)
-    sleep_data = sleep_raw.join(sleep_components)
+    sleep_components = daily_sleep["Value"].apply(parse_sleep_value).apply(pd.Series)
+    sleep_data = daily_sleep.join(sleep_components)
 
     # Convert timestamps to local time
     sleep_data["bedtime_local"] = pd.to_datetime(
@@ -340,8 +347,6 @@ def analyze_sleep(
     sleep_data["wakeup_minutes"] = sleep_data["wakeup_local"].dt.hour * \
         60 + sleep_data["wakeup_local"].dt.minute
     sleep_data["bedtime_minutes_norm"] = normalize_bedtime_minutes(sleep_data["bedtime_local"])
-    sleep_data["month"] = pd.to_datetime(sleep_data["date"]).dt.to_period("M")
-    sleep_data["weekday"] = pd.to_datetime(sleep_data["date"]).dt.day_name()
 
     if sleep_data.empty:
         print("Sleep dataset is empty after parsing.")
@@ -477,6 +482,7 @@ def analyze_sleep(
         export_plot(fig, output_dir / f"sleep_time_weekday.{image_format}", image_format)
 
     avg_stages = {
+        "Nap": sleep_data["sleep_nap"].mean(),
         "Awake": sleep_data["sleep_awake"].mean(),
         "Light": sleep_data["sleep_light"].mean(),
         "Deep": sleep_data["sleep_deep"].mean(),
@@ -489,7 +495,7 @@ def analyze_sleep(
             autopct="%1.1f%%",
             startangle=140,
             counterclock=False,
-            colors=["#aec6cf", "#87ceeb", "#4682b4", "#5f9ea0"],
+            colors=["#aec6cf", "#87ceeb", "#4682b4", "#5f9ea0", "#2f4f4f"],
             wedgeprops=dict(edgecolor="#fffdf8", width=0.4),
         )
         ax.set_title(f"Average Sleep Stages in {year}")
@@ -597,7 +603,7 @@ def main() -> None:
     print(f"Loaded {len(df)} records for {args.year}.")
     analyze_steps(df, args.year, output_dir, args.format, args.font)
     analyze_distance(df, args.year, output_dir, args.format, args.font)
-    # analyze_sleep(df, args.tz_offset, args.year, output_dir, args.format, args.font)
+    analyze_sleep(df, args.tz_offset, args.year, output_dir, args.format, args.font)
     # analyze_heart_rate(df, args.year, output_dir, args.format, args.font)
 
 
