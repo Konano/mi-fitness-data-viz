@@ -219,7 +219,8 @@ def analyze_steps(
             alpha=0.7,
         )
         avg_steps = daily_steps["steps"].mean()
-        ax.axvline(avg_steps, color=PALETTE["steps"], linestyle="--", linewidth=1.5, label=f"Avg: {round(avg_steps)}")
+        ax.axvline(avg_steps, color=PALETTE["steps"], linestyle="--",
+                   linewidth=1.5, label=f"Avg: {round(avg_steps)}")
         ax.legend(frameon=False)
         ax.set_title(f"Distribution of Daily Steps in {year}")
         ax.set_xlabel("Step Count")
@@ -274,7 +275,7 @@ def analyze_steps(
         export_plot(fig, output_dir / f"steps_daily.{image_format}", image_format)
 
 
-def analyze_dist(
+def analyze_distance(
     df: pd.DataFrame,
     year: int,
     output_dir: Path,
@@ -323,7 +324,8 @@ def analyze_dist(
             alpha=0.7,
         )
         avg_distance = daily_dist["distance"].mean() / 1000
-        ax.axvline(avg_distance, color=PALETTE["distance"], linestyle="--", linewidth=1.5, label=f"Avg: {avg_distance:.2f} km")
+        ax.axvline(avg_distance, color=PALETTE["distance"], linestyle="--",
+                   linewidth=1.5, label=f"Avg: {avg_distance:.2f} km")
         ax.legend(frameon=False)
         ax.set_title(f"Distribution of Daily Distance in {year}")
         ax.set_xlabel("Distance (km)")
@@ -335,10 +337,11 @@ def analyze_dist(
     # Plot average daily distance per month
     with themed_axes(font_family) as (fig, ax):
         month_labels = monthly_avg_dist["month"].dt.strftime("%b")
-        bars = ax.bar(month_labels, monthly_avg_dist["distance"], color=PALETTE["distance"])
-        for bar, dist in zip(bars, monthly_avg_dist["distance"]):
+        distance_km = monthly_avg_dist["distance"] / 1000
+        bars = ax.bar(month_labels, distance_km, color=PALETTE["distance"])
+        for bar, dist in zip(bars, distance_km):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                    f"{dist:.2f}", ha="center", va="bottom", fontsize=9)
+                    f"{dist:.2f} km", ha="center", va="bottom", fontsize=9)
         ax.set_title(f"Average Daily Distance Per Month in {year}")
         ax.set_xlabel("Month")
         ax.set_ylabel("Distance (km)")
@@ -346,11 +349,11 @@ def analyze_dist(
 
     # Plot average daily distance by weekday
     with themed_axes(font_family) as (fig, ax):
-        bars = ax.bar(weekday_avg_dist["weekday"],
-                      weekday_avg_dist["distance"], color=PALETTE["steps"])
-        for bar, dist in zip(bars, weekday_avg_dist["distance"]):
+        distance_km = weekday_avg_dist["distance"] / 1000
+        bars = ax.bar(weekday_avg_dist["weekday"], distance_km, color=PALETTE["distance"])
+        for bar, dist in zip(bars, distance_km):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                    f"{dist:.2f}", ha="center", va="bottom", fontsize=9)
+                    f"{dist:.2f} km", ha="center", va="bottom", fontsize=9)
         ax.set_title(f"Average Daily Distance by Weekday in {year}")
         ax.set_xlabel("Weekday")
         ax.set_ylabel("Distance (km)")
@@ -370,7 +373,7 @@ def analyze_dist(
                     f"{dist:.2f}", ha="center", va="bottom", fontsize=8)
         ax.set_title(f"Average Distance Per Hour in {year}")
         ax.set_xlabel("Hour of Day")
-        ax.set_ylabel("Distance (km)")
+        ax.set_ylabel("Distance (m)")
         ax.set_xticks(range(0, 24))
         export_plot(fig, output_dir / f"distance_daily.{image_format}", image_format)
 
@@ -476,7 +479,8 @@ def analyze_sleep(
             alpha=0.7,
         )
         avg_duration = daily_sleep["duration"].mean() / 60
-        ax.axvline(avg_duration, color=PALETTE["sleep"], linestyle="--", linewidth=1.5, label=f"Avg: {format_duration(avg_duration * 60)}")
+        ax.axvline(avg_duration, color=PALETTE["sleep"], linestyle="--",
+                   linewidth=1.5, label=f"Avg: {format_duration(avg_duration * 60)}")
         ax.legend(frameon=False)
         ax.set_title(f"Distribution of Daily Sleep Duration in {year}")
         ax.set_xlabel("Sleep Duration (hours)")
@@ -706,7 +710,7 @@ def analyze_vitality(
     # Extract and aggregate vitality data
     daily_vitality["vitality_score"] = daily_vitality["Value"].apply(
         lambda val: safe_json_loads(val).get("latest_accumulated_vitality", 0))
-    
+
     print(f"Average daily vitality score in {year}: {daily_vitality['vitality_score'].mean():.2f}")
 
     # Generate yearly histogram for vitality
@@ -718,7 +722,8 @@ def analyze_vitality(
             alpha=0.7,
         )
         avg_vitality = daily_vitality["vitality_score"].mean()
-        ax.axvline(avg_vitality, color=PALETTE["vitality"], linestyle="--", linewidth=1.5, label=f"Avg: {avg_vitality:.2f}")
+        ax.axvline(avg_vitality, color=PALETTE["vitality"], linestyle="--",
+                   linewidth=1.5, label=f"Avg: {avg_vitality:.2f}")
         ax.legend(frameon=False)
         ax.set_title(f"Distribution of Daily Vitality Scores in {year}")
         ax.set_xlabel("Vitality Score")
@@ -760,7 +765,7 @@ def main() -> None:
 
     print(f"Loaded {len(df)} records for {args.year}.")
     analyze_steps(df, args.year, output_dir, args.format, args.font)
-    analyze_dist(df, args.year, output_dir, args.format, args.font)
+    analyze_distance(df, args.year, output_dir, args.format, args.font)
     analyze_sleep(df, args.tz_offset, args.year, output_dir, args.format, args.font)
     analyze_heart_rate(df, args.year, output_dir, args.format, args.font)
     analyze_vitality(df, args.year, output_dir, args.format, args.font)

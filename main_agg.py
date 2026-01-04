@@ -258,9 +258,9 @@ def analyze_distance(
         month_labels = monthly_avg_dist["month"].dt.strftime("%b")
         distance_km = monthly_avg_dist["distance"] / 1000
         bars = ax.bar(month_labels, distance_km, color=PALETTE["distance"])
-        for bar, distance in zip(bars, monthly_avg_dist["distance"]):
+        for bar, distance in zip(bars, distance_km):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                    f"{distance/1000:.2f} km", ha="center", va="bottom", fontsize=9)
+                    f"{distance:.2f} km", ha="center", va="bottom", fontsize=9)
         ax.set_title(f"Average Daily Distance Per Month in {year}")
         ax.set_xlabel("Month")
         ax.set_ylabel("Distance (km)")
@@ -272,9 +272,9 @@ def analyze_distance(
         distance_km = weekday_avg_dist["distance"] / 1000
         bars = ax.bar(weekday_avg_dist["weekday"],
                       distance_km, color=PALETTE["distance"])
-        for bar, distance in zip(bars, weekday_avg_dist["distance"]):
+        for bar, distance in zip(bars, distance_km):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                    f"{distance/1000:.2f} km", ha="center", va="bottom", fontsize=9)
+                    f"{distance:.2f} km", ha="center", va="bottom", fontsize=9)
         ax.set_title(f"Average Daily Distance by Weekday in {year}")
         ax.set_xlabel("Weekday")
         ax.set_ylabel("Distance (km)")
