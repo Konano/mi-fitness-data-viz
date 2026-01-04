@@ -195,8 +195,8 @@ def analyze_steps(
         return
 
     # Print summary statistics
-    describe_top_days(daily_steps, "steps", "step count")
     print(f"Average daily steps in {year}: {daily_steps['steps'].mean():.0f}")
+    describe_top_days(daily_steps, "steps", "step count")
 
     # Generate monthly and weekday plots
     daily_steps["month"] = pd.to_datetime(daily_steps["date"]).dt.to_period("M")
@@ -281,8 +281,8 @@ def analyze_dist(
         return
 
     # Print summary statistics
-    describe_top_days(daily_dist, "distance", "distance (km)", formatter=lambda d: f"{d/1000:.2f} km")
     print(f"Average daily distance in {year}: {daily_dist['distance'].mean()/1000:.2f} km")
+    describe_top_days(daily_dist, "distance", "distance (km)", formatter=lambda d: f"{d/1000:.2f} km")
 
     # Generate monthly and weekday plots
     daily_dist["month"] = pd.to_datetime(daily_dist["date"]).dt.to_period("M")
