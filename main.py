@@ -120,9 +120,17 @@ def export_plot(fig: plt.Figure, output_path: Path, image_format: str) -> None:
     # print(f"Saved plot => {output_path}")
 
 
+class CSVFileFormatError(Exception):
+    """Custom exception for unexpected CSV file format."""
+    pass
+
+
 def prepare_dataframe(csv_path: Path, tz_offset: float, year: int) -> pd.DataFrame:
     """Prepare and filter the dataframe for the specified year."""
     df = pd.read_csv(csv_path)
+    if df.columns.tolist() != ['Uid', 'Sid', 'Key', 'Time', 'Value', 'UpdateTime']:
+        raise CSVFileFormatError("Unexpected CSV format.")
+
     local_time = pd.to_datetime(df["Time"], unit="s") + pd.Timedelta(hours=tz_offset)
     df["local_time"] = local_time
     df["date"] = df["local_time"].dt.date
@@ -555,9 +563,8 @@ def main() -> None:
     except pd.errors.EmptyDataError:
         print(f"Input CSV file is empty: {args.input_csv}", file=sys.stderr)
         sys.exit(1)
-
-    if df.empty:
-        print(f"No data available for year {args.year}.", file=sys.stderr)
+    except CSVFileFormatError:
+        print("Input CSV file has an unexpected format. Please ensure the file is hlth_center_fitness_data.csv.", file=sys.stderr)
         sys.exit(1)
 
     print(f"Loaded {len(df)} records for {args.year}.")
