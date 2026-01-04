@@ -25,10 +25,10 @@ WEEKDAY_ORDER = [
 
 PALETTE = {
     "steps": "#F08A24",
-    "distance": "#F08A24",
+    "distance": "#4CAF50",
     "sleep": "#4B9FE1",
     "heart": "#E0454F",
-    "vitality": "#E0454F",
+    "vitality": "#C83E8D",
 }
 
 
