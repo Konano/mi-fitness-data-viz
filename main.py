@@ -25,8 +25,10 @@ WEEKDAY_ORDER = [
 
 PALETTE = {
     "steps": "#F08A24",
+    "distance": "#F08A24",
     "sleep": "#4B9FE1",
     "heart": "#E0454F",
+    "vitality": "#E0454F",
 }
 
 
@@ -297,7 +299,7 @@ def analyze_dist(
     # Plot average daily distance per month
     with themed_axes(font_family) as (fig, ax):
         month_labels = monthly_avg_dist["month"].dt.strftime("%b")
-        bars = ax.bar(month_labels, monthly_avg_dist["distance"], color=PALETTE["steps"])
+        bars = ax.bar(month_labels, monthly_avg_dist["distance"], color=PALETTE["distance"])
         for bar, dist in zip(bars, monthly_avg_dist["distance"]):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
                     f"{dist:.2f}", ha="center", va="bottom", fontsize=9)
@@ -326,7 +328,7 @@ def analyze_dist(
 
     # Plot average distance per hour
     with themed_axes(font_family) as (fig, ax):
-        bars = ax.bar(hourly_avg_dist["hour"], hourly_avg_dist["distance"], color=PALETTE["steps"])
+        bars = ax.bar(hourly_avg_dist["hour"], hourly_avg_dist["distance"], color=PALETTE["distance"])
         for bar, dist in zip(bars, hourly_avg_dist["distance"]):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
                     f"{dist:.2f}", ha="center", va="bottom", fontsize=8)
@@ -634,6 +636,58 @@ def analyze_heart_rate(
         export_plot(fig, output_dir / f"heart_rate_daily.{image_format}", image_format)
 
 
+def analyze_vitality(
+    df: pd.DataFrame,
+    year: int,
+    output_dir: Path,
+    image_format: str,
+    font_family: str,
+) -> None:
+    """Analyze vitality data and generate plots."""
+    daily_vitality = df[df["Key"] == "vitality"].copy()
+    if daily_vitality.empty:
+        print("No vitality data for the selected year.")
+        return
+
+    # Extract and aggregate vitality data
+    daily_vitality["vitality_score"] = daily_vitality["Value"].apply(
+        lambda val: safe_json_loads(val).get("latest_accumulated_vitality", 0))
+    
+    print(f"Average daily vitality score in {year}: {daily_vitality['vitality_score'].mean():.2f}")
+
+    # Generate yearly histogram for vitality
+    with themed_axes(font_family) as (fig, ax):
+        ax.hist(
+            daily_vitality["vitality_score"],
+            bins=20,
+            color=PALETTE["vitality"],
+            alpha=0.7,
+        )
+        avg_vitality = daily_vitality["vitality_score"].mean()
+        ax.axvline(avg_vitality, color="red", linestyle="--", linewidth=1.5, label=f"Avg: {avg_vitality:.2f}")
+        ax.legend(frameon=False)
+        ax.set_title(f"Distribution of Daily Vitality Scores in {year}")
+        ax.set_xlabel("Vitality Score")
+        ax.set_ylabel("Frequency")
+        ax.set_ylim(bottom=0)
+        ax.grid(False)
+        export_plot(fig, output_dir / f"vitality_histogram.{image_format}", image_format)
+
+    monthly_vitality = daily_vitality.groupby("month")["vitality_score"].mean().reset_index()
+    with themed_axes(font_family) as (fig, ax):
+        month_labels = monthly_vitality["month"].dt.strftime("%b")
+        bars = ax.bar(month_labels, monthly_vitality["vitality_score"], color=PALETTE["vitality"])
+        for bar, score in zip(bars, monthly_vitality["vitality_score"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{round(score)}", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Vitality Score per Month in {year}")
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Vitality Score")
+        ax.set_ylim(bottom=0)
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"vitality_monthly.{image_format}", image_format)
+
+
 def main() -> None:
     args = parse_arguments()
     output_dir = ensure_output_dir(args.output)
@@ -655,6 +709,7 @@ def main() -> None:
     analyze_dist(df, args.year, output_dir, args.format, args.font)
     analyze_sleep(df, args.tz_offset, args.year, output_dir, args.format, args.font)
     analyze_heart_rate(df, args.year, output_dir, args.format, args.font)
+    analyze_vitality(df, args.year, output_dir, args.format, args.font)
 
 
 if __name__ == "__main__":
