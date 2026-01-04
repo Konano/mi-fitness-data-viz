@@ -483,6 +483,19 @@ def analyze_sleep(
     
     print(f"Average sleep score in {year}: {sleep_data['score'].mean():.1f}")
 
+    # Generate histogram for sleep score
+    with themed_axes(font_family) as (fig, ax):
+        ax.hist(sleep_data["score"], bins=range(0, 101, 5), color=PALETTE["sleep"], alpha=0.7)
+        avg_sleep_score = sleep_data["score"].mean()
+        ax.axvline(avg_sleep_score, color=PALETTE["sleep"], linestyle="--", label=f"Avg: {avg_sleep_score:.1f}")
+        ax.legend(frameon=False)
+        ax.set_title(f"Sleep Score Distribution in {year}")
+        ax.set_xlabel("Sleep Score")
+        ax.set_ylabel("Frequency")
+        ax.set_xlim(0, 100)
+        ax.grid(False)
+        export_plot(fig, output_dir / f"sleep_score_histogram.{image_format}", image_format)
+
     # Generate monthly, and weekday bars for sleep score
     monthly_avg_sleep_score = sleep_data.groupby("month")["score"].mean().reset_index()
     with themed_axes(font_family) as (fig, ax):
