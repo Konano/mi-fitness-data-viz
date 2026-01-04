@@ -183,6 +183,56 @@ def analyze_steps(
 
     # Extract and aggregate step data
     steps_raw["steps"] = steps_raw["Value"].apply(lambda val: safe_json_loads(val).get("steps", 0))
+    # steps_raw["half_hour"] = steps_raw["local_time"].dt.floor("30min")
+    # half_hour_steps = steps_raw.groupby(["Sid", "half_hour"])["steps"].sum().reset_index()
+    # idx = half_hour_steps.groupby("half_hour")["steps"].idxmax()
+    # max_steps_per_half_hour = half_hour_steps.loc[idx].reset_index(drop=True)
+    # max_steps_per_half_hour["date"] = max_steps_per_half_hour["half_hour"].dt.date
+    # daily_steps = max_steps_per_half_hour.groupby("date")["steps"].sum().reset_index()
+
+    # if daily_steps.empty:
+    #     print("Steps data could not be aggregated.")
+    #     return
+
+    # # Print summary statistics
+    # describe_top_days(daily_steps, "steps", "step count")
+    # print(f"Average daily steps in {year}: {daily_steps['steps'].mean():.0f}")
+
+    # # Generate monthly and weekday plots
+    # daily_steps["month"] = pd.to_datetime(daily_steps["date"]).dt.to_period("M")
+    # monthly_avg_steps = daily_steps.groupby("month")["steps"].mean().reset_index()
+    # weekday_avg_steps = (
+    #     daily_steps.assign(weekday=pd.to_datetime(daily_steps["date"]).dt.day_name())
+    #     .groupby("weekday")["steps"].mean()
+    #     .reindex(WEEKDAY_ORDER)
+    #     .reset_index()
+    # )
+
+    # # Plot average daily steps per month
+    # with themed_axes(font_family) as (fig, ax):
+    #     month_labels = monthly_avg_steps["month"].dt.strftime("%b")
+    #     bars = ax.bar(month_labels, monthly_avg_steps["steps"], color=PALETTE["steps"])
+    #     for bar, steps in zip(bars, monthly_avg_steps["steps"]):
+    #         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+    #                 f"{round(steps)}", ha="center", va="bottom", fontsize=9)
+    #     ax.set_title(f"Average Daily Steps Per Month in {year}")
+    #     ax.set_xlabel("Month")
+    #     ax.set_ylabel("Steps")
+    #     # ax.set_axisbelow(True)
+    #     export_plot(fig, output_dir / f"steps_monthly.{image_format}", image_format)
+
+    # # Plot average daily steps by weekday
+    # with themed_axes(font_family) as (fig, ax):
+    #     bars = ax.bar(weekday_avg_steps["weekday"],
+    #                   weekday_avg_steps["steps"], color=PALETTE["steps"])
+    #     for bar, steps in zip(bars, weekday_avg_steps["steps"]):
+    #         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+    #                 f"{round(steps)}", ha="center", va="bottom", fontsize=9)
+    #     ax.set_title(f"Average Daily Steps by Weekday in {year}")
+    #     ax.set_xlabel("Weekday")
+    #     ax.set_ylabel("Steps")
+    #     # ax.set_axisbelow(True)
+    #     export_plot(fig, output_dir / f"steps_weekday.{image_format}", image_format)
 
     # Analyze hourly step data
     steps_raw["hour"] = steps_raw["local_time"].dt.hour  # Extract hour of the day
