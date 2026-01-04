@@ -1,12 +1,13 @@
 # Mi Fitness Data Viz CLI
 
-A lightweight Python-based command-line tool that turns Xiaomi Mi Fitness exports into yearly stories about your activity, sleep, and heart rate, with every chart using Matplotlib's xkcd mode.
+A lightweight Python-based command-line tool that turns Xiaomi Mi Fitness exports into yearly stories about your activity, sleep, heart rate, and vitality, with every chart using Matplotlib's xkcd mode.
 
 ## Highlights
 
 - Sleep timelines: bedtime and wake-up bands split by month and by weekday, plus duration and stage distributions.
-- Steps breakdowns: month-over-month averages, weekday behavior, and a 24-hour step density profile.
+- Steps breakdowns: month-over-month averages, weekday behavior, a yearly histogram, and a 24-hour density profile.
 - Heart rate snapshots: average BPM per month, weekday, and hour keeps resting rhythms visible.
+- Vitality scores: histogram and monthly averages show how Xiaomi's vitality metric evolves through the year.
 - Text summaries: the terminal reports top days, averages, and basic stats alongside the plots.
 
 ## Example visualizations
