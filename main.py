@@ -210,6 +210,24 @@ def analyze_steps(
         .reset_index()
     )
 
+    # Generate yearly histogram for steps
+    with themed_axes(font_family) as (fig, ax):
+        ax.hist(
+            daily_steps["steps"],
+            bins=20,
+            color=PALETTE["steps"],
+            alpha=0.7,
+        )
+        avg_steps = daily_steps["steps"].mean()
+        ax.axvline(avg_steps, color=PALETTE["steps"], linestyle="--", linewidth=1.5, label=f"Avg: {round(avg_steps)}")
+        ax.legend(frameon=False)
+        ax.set_title(f"Distribution of Daily Steps in {year}")
+        ax.set_xlabel("Step Count")
+        ax.set_ylabel("Frequency")
+        ax.set_ylim(bottom=0)
+        ax.grid(False)
+        export_plot(fig, output_dir / f"steps_histogram.{image_format}", image_format)
+
     # Plot average daily steps per month
     with themed_axes(font_family) as (fig, ax):
         month_labels = monthly_avg_steps["month"].dt.strftime("%b")
@@ -295,6 +313,24 @@ def analyze_dist(
         .reindex(WEEKDAY_ORDER)
         .reset_index()
     )
+
+    # Generate yearly histogram for distance (in km)
+    with themed_axes(font_family) as (fig, ax):
+        ax.hist(
+            daily_dist["distance"] / 1000,
+            bins=20,
+            color=PALETTE["distance"],
+            alpha=0.7,
+        )
+        avg_distance = daily_dist["distance"].mean() / 1000
+        ax.axvline(avg_distance, color=PALETTE["distance"], linestyle="--", linewidth=1.5, label=f"Avg: {avg_distance:.2f} km")
+        ax.legend(frameon=False)
+        ax.set_title(f"Distribution of Daily Distance in {year}")
+        ax.set_xlabel("Distance (km)")
+        ax.set_ylabel("Frequency")
+        ax.set_ylim(bottom=0)
+        ax.grid(False)
+        export_plot(fig, output_dir / f"distance_histogram.{image_format}", image_format)
 
     # Plot average daily distance per month
     with themed_axes(font_family) as (fig, ax):
@@ -430,6 +466,24 @@ def analyze_sleep(
         columns={"duration": "minutes"}), "minutes", "sleep duration (minutes)",
         formatter=format_duration
     )
+
+    # Generate yearly histogram for sleep duration (in hours)
+    with themed_axes(font_family) as (fig, ax):
+        ax.hist(
+            daily_sleep["duration"] / 60,
+            bins=20,
+            color=PALETTE["sleep"],
+            alpha=0.7,
+        )
+        avg_duration = daily_sleep["duration"].mean() / 60
+        ax.axvline(avg_duration, color=PALETTE["sleep"], linestyle="--", linewidth=1.5, label=f"Avg: {format_duration(avg_duration * 60)}")
+        ax.legend(frameon=False)
+        ax.set_title(f"Distribution of Daily Sleep Duration in {year}")
+        ax.set_xlabel("Sleep Duration (hours)")
+        ax.set_ylabel("Frequency")
+        ax.set_ylim(bottom=0)
+        ax.grid(False)
+        export_plot(fig, output_dir / f"sleep_duration_histogram.{image_format}", image_format)
 
     monthly_avg_sleep = sleep_data.groupby("month")["duration"].mean().reset_index()
 
@@ -664,7 +718,7 @@ def analyze_vitality(
             alpha=0.7,
         )
         avg_vitality = daily_vitality["vitality_score"].mean()
-        ax.axvline(avg_vitality, color="red", linestyle="--", linewidth=1.5, label=f"Avg: {avg_vitality:.2f}")
+        ax.axvline(avg_vitality, color=PALETTE["vitality"], linestyle="--", linewidth=1.5, label=f"Avg: {avg_vitality:.2f}")
         ax.legend(frameon=False)
         ax.set_title(f"Distribution of Daily Vitality Scores in {year}")
         ax.set_xlabel("Vitality Score")
