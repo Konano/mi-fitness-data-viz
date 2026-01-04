@@ -183,56 +183,56 @@ def analyze_steps(
 
     # Extract and aggregate step data
     steps_raw["steps"] = steps_raw["Value"].apply(lambda val: safe_json_loads(val).get("steps", 0))
-    # steps_raw["half_hour"] = steps_raw["local_time"].dt.floor("30min")
-    # half_hour_steps = steps_raw.groupby(["Sid", "half_hour"])["steps"].sum().reset_index()
-    # idx = half_hour_steps.groupby("half_hour")["steps"].idxmax()
-    # max_steps_per_half_hour = half_hour_steps.loc[idx].reset_index(drop=True)
-    # max_steps_per_half_hour["date"] = max_steps_per_half_hour["half_hour"].dt.date
-    # daily_steps = max_steps_per_half_hour.groupby("date")["steps"].sum().reset_index()
+    steps_raw["half_hour"] = steps_raw["local_time"].dt.floor("30min")
+    half_hour_steps = steps_raw.groupby(["Sid", "half_hour"])["steps"].sum().reset_index()
+    idx = half_hour_steps.groupby("half_hour")["steps"].idxmax()
+    max_steps_per_half_hour = half_hour_steps.loc[idx].reset_index(drop=True)
+    max_steps_per_half_hour["date"] = max_steps_per_half_hour["half_hour"].dt.date
+    daily_steps = max_steps_per_half_hour.groupby("date")["steps"].sum().reset_index()
 
-    # if daily_steps.empty:
-    #     print("Steps data could not be aggregated.")
-    #     return
+    if daily_steps.empty:
+        print("Steps data could not be aggregated.")
+        return
 
-    # # Print summary statistics
-    # describe_top_days(daily_steps, "steps", "step count")
-    # print(f"Average daily steps in {year}: {daily_steps['steps'].mean():.0f}")
+    # Print summary statistics
+    describe_top_days(daily_steps, "steps", "step count")
+    print(f"Average daily steps in {year}: {daily_steps['steps'].mean():.0f}")
 
-    # # Generate monthly and weekday plots
-    # daily_steps["month"] = pd.to_datetime(daily_steps["date"]).dt.to_period("M")
-    # monthly_avg_steps = daily_steps.groupby("month")["steps"].mean().reset_index()
-    # weekday_avg_steps = (
-    #     daily_steps.assign(weekday=pd.to_datetime(daily_steps["date"]).dt.day_name())
-    #     .groupby("weekday")["steps"].mean()
-    #     .reindex(WEEKDAY_ORDER)
-    #     .reset_index()
-    # )
+    # Generate monthly and weekday plots
+    daily_steps["month"] = pd.to_datetime(daily_steps["date"]).dt.to_period("M")
+    monthly_avg_steps = daily_steps.groupby("month")["steps"].mean().reset_index()
+    weekday_avg_steps = (
+        daily_steps.assign(weekday=pd.to_datetime(daily_steps["date"]).dt.day_name())
+        .groupby("weekday")["steps"].mean()
+        .reindex(WEEKDAY_ORDER)
+        .reset_index()
+    )
 
-    # # Plot average daily steps per month
-    # with themed_axes(font_family) as (fig, ax):
-    #     month_labels = monthly_avg_steps["month"].dt.strftime("%b")
-    #     bars = ax.bar(month_labels, monthly_avg_steps["steps"], color=PALETTE["steps"])
-    #     for bar, steps in zip(bars, monthly_avg_steps["steps"]):
-    #         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-    #                 f"{round(steps)}", ha="center", va="bottom", fontsize=9)
-    #     ax.set_title(f"Average Daily Steps Per Month in {year}")
-    #     ax.set_xlabel("Month")
-    #     ax.set_ylabel("Steps")
-    #     # ax.set_axisbelow(True)
-    #     export_plot(fig, output_dir / f"steps_monthly.{image_format}", image_format)
+    # Plot average daily steps per month
+    with themed_axes(font_family) as (fig, ax):
+        month_labels = monthly_avg_steps["month"].dt.strftime("%b")
+        bars = ax.bar(month_labels, monthly_avg_steps["steps"], color=PALETTE["steps"])
+        for bar, steps in zip(bars, monthly_avg_steps["steps"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{round(steps)}", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Steps Per Month in {year}")
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Steps")
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"steps_monthly.{image_format}", image_format)
 
-    # # Plot average daily steps by weekday
-    # with themed_axes(font_family) as (fig, ax):
-    #     bars = ax.bar(weekday_avg_steps["weekday"],
-    #                   weekday_avg_steps["steps"], color=PALETTE["steps"])
-    #     for bar, steps in zip(bars, weekday_avg_steps["steps"]):
-    #         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-    #                 f"{round(steps)}", ha="center", va="bottom", fontsize=9)
-    #     ax.set_title(f"Average Daily Steps by Weekday in {year}")
-    #     ax.set_xlabel("Weekday")
-    #     ax.set_ylabel("Steps")
-    #     # ax.set_axisbelow(True)
-    #     export_plot(fig, output_dir / f"steps_weekday.{image_format}", image_format)
+    # Plot average daily steps by weekday
+    with themed_axes(font_family) as (fig, ax):
+        bars = ax.bar(weekday_avg_steps["weekday"],
+                      weekday_avg_steps["steps"], color=PALETTE["steps"])
+        for bar, steps in zip(bars, weekday_avg_steps["steps"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{round(steps)}", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Steps by Weekday in {year}")
+        ax.set_xlabel("Weekday")
+        ax.set_ylabel("Steps")
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"steps_weekday.{image_format}", image_format)
 
     # Analyze hourly step data
     steps_raw["hour"] = steps_raw["local_time"].dt.hour  # Extract hour of the day
@@ -252,6 +252,89 @@ def analyze_steps(
         ax.set_xticks(range(0, 24))
         # ax.set_axisbelow(True)
         export_plot(fig, output_dir / f"steps_daily.{image_format}", image_format)
+
+
+def analyze_dist(
+    df: pd.DataFrame,
+    year: int,
+    output_dir: Path,
+    image_format: str,
+    font_family: str,
+) -> None:
+    """Analyze distance data and generate plots."""
+    dist_raw = df[df["Key"] == "steps"].copy()
+    if dist_raw.empty:
+        print("No distance data for the selected year.")
+        return
+
+    # Extract and aggregate distance data
+    dist_raw["distance"] = dist_raw["Value"].apply(lambda val: safe_json_loads(val).get("distance", 0))
+    dist_raw["half_hour"] = dist_raw["local_time"].dt.floor("30min")
+    half_hour_dist = dist_raw.groupby(["Sid", "half_hour"])["distance"].sum().reset_index()
+    idx = half_hour_dist.groupby("half_hour")["distance"].idxmax()
+    max_dist_per_half_hour = half_hour_dist.loc[idx].reset_index(drop=True)
+    max_dist_per_half_hour["date"] = max_dist_per_half_hour["half_hour"].dt.date
+    daily_dist = max_dist_per_half_hour.groupby("date")["distance"].sum().reset_index()
+
+    if daily_dist.empty:
+        print("Distance data could not be aggregated.")
+        return
+
+    # Print summary statistics
+    describe_top_days(daily_dist, "distance", "distance (km)", formatter=lambda d: f"{d/1000:.2f} km")
+    print(f"Average daily distance in {year}: {daily_dist['distance'].mean()/1000:.2f} km")
+
+    # Generate monthly and weekday plots
+    daily_dist["month"] = pd.to_datetime(daily_dist["date"]).dt.to_period("M")
+    monthly_avg_dist = daily_dist.groupby("month")["distance"].mean().reset_index()
+    weekday_avg_dist = (
+        daily_dist.assign(weekday=pd.to_datetime(daily_dist["date"]).dt.day_name())
+        .groupby("weekday")["distance"].mean()
+        .reindex(WEEKDAY_ORDER)
+        .reset_index()
+    )
+
+    # Plot average daily distance per month
+    with themed_axes(font_family) as (fig, ax):
+        month_labels = monthly_avg_dist["month"].dt.strftime("%b")
+        bars = ax.bar(month_labels, monthly_avg_dist["distance"], color=PALETTE["steps"])
+        for bar, dist in zip(bars, monthly_avg_dist["distance"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{dist:.2f}", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Distance Per Month in {year}")
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Distance (km)")
+        export_plot(fig, output_dir / f"distance_monthly.{image_format}", image_format)
+
+    # Plot average daily distance by weekday
+    with themed_axes(font_family) as (fig, ax):
+        bars = ax.bar(weekday_avg_dist["weekday"],
+                      weekday_avg_dist["distance"], color=PALETTE["steps"])
+        for bar, dist in zip(bars, weekday_avg_dist["distance"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{dist:.2f}", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Distance by Weekday in {year}")
+        ax.set_xlabel("Weekday")
+        ax.set_ylabel("Distance (km)")
+        export_plot(fig, output_dir / f"distance_weekday.{image_format}", image_format)
+
+    # Analyze hourly distance data
+    dist_raw["hour"] = dist_raw["local_time"].dt.hour  # Extract hour of the day
+    hourly_dist = dist_raw.groupby("hour")["distance"].sum()
+    days_with_data = dist_raw["date"].nunique()
+    hourly_avg_dist = (hourly_dist / days_with_data).reset_index(name="distance")
+
+    # Plot average distance per hour
+    with themed_axes(font_family) as (fig, ax):
+        bars = ax.bar(hourly_avg_dist["hour"], hourly_avg_dist["distance"], color=PALETTE["steps"])
+        for bar, dist in zip(bars, hourly_avg_dist["distance"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{dist:.2f}", ha="center", va="bottom", fontsize=8)
+        ax.set_title(f"Average Distance Per Hour in {year}")
+        ax.set_xlabel("Hour of Day")
+        ax.set_ylabel("Distance (km)")
+        ax.set_xticks(range(0, 24))
+        export_plot(fig, output_dir / f"distance_daily.{image_format}", image_format)
 
 
 def parse_sleep_value(value: Any) -> dict[str, Any]:
@@ -569,6 +652,7 @@ def main() -> None:
 
     print(f"Loaded {len(df)} records for {args.year}.")
     analyze_steps(df, args.year, output_dir, args.format, args.font)
+    analyze_dist(df, args.year, output_dir, args.format, args.font)
     analyze_sleep(df, args.tz_offset, args.year, output_dir, args.format, args.font)
     analyze_heart_rate(df, args.year, output_dir, args.format, args.font)
 
