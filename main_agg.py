@@ -25,6 +25,7 @@ WEEKDAY_ORDER = [
 
 PALETTE = {
     "steps": "#F08A24",
+    "distance": "#F08A24",
     "sleep": "#4B9FE1",
     "heart": "#E0454F",
 }
@@ -60,7 +61,7 @@ def parse_arguments() -> argparse.Namespace:
         description="Generate yearly steps, sleep patterns, and heart-rate visualizations from Mi Fitness data."
     )
     parser.add_argument("input_csv", type=Path,
-                        help="Path to the exported hlth_center_fitness_data CSV file.")
+                        help="Path to the exported hlth_center_aggregated_fitness_data CSV file.")
     parser.add_argument("--year", type=int, default=default_year,
                         help=f"Target year to analyze (default: {default_year}).")
     parser.add_argument("--tz", dest="tz_offset", type=int, default=8,
@@ -128,7 +129,7 @@ class CSVFileFormatError(Exception):
 def prepare_dataframe(csv_path: Path, tz_offset: float, year: int) -> pd.DataFrame:
     """Prepare and filter the dataframe for the specified year."""
     df = pd.read_csv(csv_path)
-    if df.columns.tolist() != ['Uid', 'Sid', 'Key', 'Time', 'Value', 'UpdateTime']:
+    if df.columns.tolist() != ['Uid', 'Sid', 'Tag', 'Key', 'Time', 'Value', 'UpdateTime']:
         raise CSVFileFormatError("Unexpected CSV format.")
 
     local_time = pd.to_datetime(df["Time"], unit="s") + pd.Timedelta(hours=tz_offset)
@@ -176,96 +177,132 @@ def analyze_steps(
     font_family: str,
 ) -> None:
     """Analyze step data and generate plots."""
-    steps_raw = df[df["Key"] == "steps"].copy()
-    if steps_raw.empty:
+    daily_steps = df[(df["Tag"] == "daily_report") & (df["Key"] == "steps")].copy()
+    if daily_steps.empty:
         print("No steps data for the selected year.")
         return
 
     # Extract and aggregate step data
-    steps_raw["steps"] = steps_raw["Value"].apply(lambda val: safe_json_loads(val).get("steps", 0))
-    # steps_raw["half_hour"] = steps_raw["local_time"].dt.floor("30min")
-    # half_hour_steps = steps_raw.groupby(["Sid", "half_hour"])["steps"].sum().reset_index()
-    # idx = half_hour_steps.groupby("half_hour")["steps"].idxmax()
-    # max_steps_per_half_hour = half_hour_steps.loc[idx].reset_index(drop=True)
-    # max_steps_per_half_hour["date"] = max_steps_per_half_hour["half_hour"].dt.date
-    # daily_steps = max_steps_per_half_hour.groupby("date")["steps"].sum().reset_index()
+    daily_steps["steps"] = daily_steps["Value"].apply(lambda val: safe_json_loads(val).get("steps", 0))
 
-    # if daily_steps.empty:
-    #     print("Steps data could not be aggregated.")
-    #     return
+    # Print summary statistics
+    describe_top_days(daily_steps, "steps", "step count")
+    print(f"Average daily steps in {year}: {daily_steps['steps'].mean():.0f}")
 
-    # # Print summary statistics
-    # describe_top_days(daily_steps, "steps", "step count")
-    # print(f"Average daily steps in {year}: {daily_steps['steps'].mean():.0f}")
+    # Generate monthly and weekday plots
+    monthly_avg_steps = daily_steps.groupby("month")["steps"].mean().reset_index()
+    weekday_avg_steps = (
+        daily_steps.groupby("weekday")["steps"].mean()
+        .reindex(WEEKDAY_ORDER)
+        .reset_index()
+    )
 
-    # # Generate monthly and weekday plots
-    # daily_steps["month"] = pd.to_datetime(daily_steps["date"]).dt.to_period("M")
-    # monthly_avg_steps = daily_steps.groupby("month")["steps"].mean().reset_index()
-    # weekday_avg_steps = (
-    #     daily_steps.assign(weekday=pd.to_datetime(daily_steps["date"]).dt.day_name())
-    #     .groupby("weekday")["steps"].mean()
-    #     .reindex(WEEKDAY_ORDER)
-    #     .reset_index()
-    # )
-
-    # # Plot average daily steps per month
-    # with themed_axes(font_family) as (fig, ax):
-    #     month_labels = monthly_avg_steps["month"].dt.strftime("%b")
-    #     bars = ax.bar(month_labels, monthly_avg_steps["steps"], color=PALETTE["steps"])
-    #     for bar, steps in zip(bars, monthly_avg_steps["steps"]):
-    #         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-    #                 f"{round(steps)}", ha="center", va="bottom", fontsize=9)
-    #     ax.set_title(f"Average Daily Steps Per Month in {year}")
-    #     ax.set_xlabel("Month")
-    #     ax.set_ylabel("Steps")
-    #     # ax.set_axisbelow(True)
-    #     export_plot(fig, output_dir / f"steps_monthly.{image_format}", image_format)
-
-    # # Plot average daily steps by weekday
-    # with themed_axes(font_family) as (fig, ax):
-    #     bars = ax.bar(weekday_avg_steps["weekday"],
-    #                   weekday_avg_steps["steps"], color=PALETTE["steps"])
-    #     for bar, steps in zip(bars, weekday_avg_steps["steps"]):
-    #         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-    #                 f"{round(steps)}", ha="center", va="bottom", fontsize=9)
-    #     ax.set_title(f"Average Daily Steps by Weekday in {year}")
-    #     ax.set_xlabel("Weekday")
-    #     ax.set_ylabel("Steps")
-    #     # ax.set_axisbelow(True)
-    #     export_plot(fig, output_dir / f"steps_weekday.{image_format}", image_format)
-
-    # Analyze hourly step data
-    steps_raw["hour"] = steps_raw["local_time"].dt.hour  # Extract hour of the day
-    hourly_steps = steps_raw.groupby("hour")["steps"].sum()
-    days_with_data = steps_raw["date"].nunique()
-    hourly_avg_steps = (hourly_steps / days_with_data).reset_index(name="steps")
-
-    # Plot average steps per hour
+    # Plot average daily steps per month
     with themed_axes(font_family) as (fig, ax):
-        bars = ax.bar(hourly_avg_steps["hour"], hourly_avg_steps["steps"], color=PALETTE["steps"])
-        for bar, steps in zip(bars, hourly_avg_steps["steps"]):
+        month_labels = monthly_avg_steps["month"].dt.strftime("%b")
+        bars = ax.bar(month_labels, monthly_avg_steps["steps"], color=PALETTE["steps"])
+        for bar, steps in zip(bars, monthly_avg_steps["steps"]):
             ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                    f"{steps:.1f}", ha="center", va="bottom", fontsize=8)
-        ax.set_title(f"Average Steps Per Hour in {year}")
-        ax.set_xlabel("Hour of Day")
+                    f"{round(steps)}", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Steps Per Month in {year}")
+        ax.set_xlabel("Month")
         ax.set_ylabel("Steps")
-        ax.set_xticks(range(0, 24))
         # ax.set_axisbelow(True)
-        export_plot(fig, output_dir / f"steps_daily.{image_format}", image_format)
+        export_plot(fig, output_dir / f"steps_monthly.{image_format}", image_format)
+
+    # Plot average daily steps by weekday
+    with themed_axes(font_family) as (fig, ax):
+        bars = ax.bar(weekday_avg_steps["weekday"],
+                      weekday_avg_steps["steps"], color=PALETTE["steps"])
+        for bar, steps in zip(bars, weekday_avg_steps["steps"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{round(steps)}", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Steps by Weekday in {year}")
+        ax.set_xlabel("Weekday")
+        ax.set_ylabel("Steps")
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"steps_weekday.{image_format}", image_format)
 
 
-def parse_sleep_value(value: Any) -> dict[str, Any]:
-    data = safe_json_loads(value)
-    return {
-        "duration": data.get("duration", 0),
+def analyze_distance(
+    df: pd.DataFrame,
+    year: int,
+    output_dir: Path,
+    image_format: str,
+    font_family: str,
+) -> None:
+    """Analyze step data and generate plots."""
+    daily_dist = df[(df["Tag"] == "daily_report") & (df["Key"] == "steps")].copy()
+    if daily_dist.empty:
+        print("No distance data for the selected year.")
+        return
+
+    # Extract and aggregate step data
+    daily_dist["distance"] = daily_dist["Value"].apply(lambda val: safe_json_loads(val).get("distance", 0))
+
+    # Print summary statistics
+    describe_top_days(daily_dist, "distance", "distance (meters)", formatter=lambda x: f"{x/1000:.2f} km")
+    print(f"Average daily distance in {year}: {daily_dist['distance'].mean()/1000:.2f} km")
+
+    # Generate monthly and weekday plots
+    monthly_avg_dist = daily_dist.groupby("month")["distance"].mean().reset_index()
+    weekday_avg_dist = (
+        daily_dist.groupby("weekday")["distance"].mean()
+        .reindex(WEEKDAY_ORDER)
+        .reset_index()
+    )
+
+    # Plot average daily distance per month
+    with themed_axes(font_family) as (fig, ax):
+        month_labels = monthly_avg_dist["month"].dt.strftime("%b")
+        distance_km = monthly_avg_dist["distance"] / 1000
+        bars = ax.bar(month_labels, distance_km, color=PALETTE["distance"])
+        for bar, distance in zip(bars, monthly_avg_dist["distance"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{distance/1000:.2f} km", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Distance Per Month in {year}")
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Distance (km)")
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"distance_monthly.{image_format}", image_format)
+
+    # Plot average daily distance by weekday
+    with themed_axes(font_family) as (fig, ax):
+        distance_km = weekday_avg_dist["distance"] / 1000
+        bars = ax.bar(weekday_avg_dist["weekday"],
+                      distance_km, color=PALETTE["distance"])
+        for bar, distance in zip(bars, weekday_avg_dist["distance"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{distance/1000:.2f} km", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Distance by Weekday in {year}")
+        ax.set_xlabel("Weekday")
+        ax.set_ylabel("Distance (km)")
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"distance_weekday.{image_format}", image_format)
+
+
+def parse_sleep_value(value: Any) -> dict[str, int]:
+    data: list[dict[str, int]] = safe_json_loads(value)
+    sleep_info = {
+        "total_duration": data.get("total_duration", 0),
         "sleep_awake": data.get("sleep_awake_duration", 0),
         "sleep_light": data.get("sleep_light_duration", 0),
         "sleep_deep": data.get("sleep_deep_duration", 0),
         "sleep_rem": data.get("sleep_rem_duration", 0),
-        "awake_count": data.get("awake_count", 0),
-        "bedtime": data.get("bedtime", 0),
-        "wakeup": data.get("wake_up_time", 0),
+        "score": data.get("sleep_score", 0),
     }
+
+    longest_sleep_segment = max(
+        (item for item in data.get("segment_details", [])),
+        key=lambda x: x.get("duration", 0),
+        default={},
+    )
+    sleep_info["duration"] = longest_sleep_segment.get("duration", 0)
+    sleep_info["bedtime"] = longest_sleep_segment.get("bedtime", 0)
+    sleep_info["wakeup"] = longest_sleep_segment.get("wake_up_time", 0)
+
+    sleep_info["sleep_nap"] = sleep_info["total_duration"] - sleep_info.get("duration", 0)
+    return sleep_info
 
 
 def normalize_bedtime_minutes(series: pd.Series) -> pd.Series:
@@ -291,17 +328,14 @@ def analyze_sleep(
     font_family: str,
 ) -> None:
     """Parse sleep data and generate plots."""
-    sleep_raw = df[
-        df["Key"].isin(["sleep", "watch_night_sleep"])
-        & df["Value"].str.contains("item", na=False)
-    ].copy()
-    if sleep_raw.empty:
+    daily_sleep = df[(df["Tag"] == "daily_report") & (df["Key"] == "sleep")].copy()
+    if daily_sleep.empty:
         print(f"No sleep data for year {year}.")
         return
 
     # Parse sleep data into structured columns
-    sleep_components = sleep_raw["Value"].apply(parse_sleep_value).apply(pd.Series)
-    sleep_data = sleep_raw.join(sleep_components)
+    sleep_components = daily_sleep["Value"].apply(parse_sleep_value).apply(pd.Series)
+    sleep_data = daily_sleep.join(sleep_components)
 
     # Convert timestamps to local time
     sleep_data["bedtime_local"] = pd.to_datetime(
@@ -313,8 +347,6 @@ def analyze_sleep(
     sleep_data["wakeup_minutes"] = sleep_data["wakeup_local"].dt.hour * \
         60 + sleep_data["wakeup_local"].dt.minute
     sleep_data["bedtime_minutes_norm"] = normalize_bedtime_minutes(sleep_data["bedtime_local"])
-    sleep_data["month"] = pd.to_datetime(sleep_data["date"]).dt.to_period("M")
-    sleep_data["weekday"] = pd.to_datetime(sleep_data["date"]).dt.day_name()
 
     if sleep_data.empty:
         print("Sleep dataset is empty after parsing.")
@@ -450,6 +482,7 @@ def analyze_sleep(
         export_plot(fig, output_dir / f"sleep_time_weekday.{image_format}", image_format)
 
     avg_stages = {
+        "Nap": sleep_data["sleep_nap"].mean(),
         "Awake": sleep_data["sleep_awake"].mean(),
         "Light": sleep_data["sleep_light"].mean(),
         "Deep": sleep_data["sleep_deep"].mean(),
@@ -462,7 +495,7 @@ def analyze_sleep(
             autopct="%1.1f%%",
             startangle=140,
             counterclock=False,
-            colors=["#aec6cf", "#87ceeb", "#4682b4", "#5f9ea0"],
+            colors=["#aec6cf", "#87ceeb", "#4682b4", "#5f9ea0", "#2f4f4f"],
             wedgeprops=dict(edgecolor="#fffdf8", width=0.4),
         )
         ax.set_title(f"Average Sleep Stages in {year}")
@@ -564,13 +597,14 @@ def main() -> None:
         print(f"Input CSV file is empty: {args.input_csv}", file=sys.stderr)
         sys.exit(1)
     except CSVFileFormatError:
-        print("Input CSV file has an unexpected format. Please ensure the file is hlth_center_fitness_data.csv.", file=sys.stderr)
+        print("Input CSV file has an unexpected format. Please ensure the file is hlth_center_aggregated_fitness_data.csv.", file=sys.stderr)
         sys.exit(1)
 
     print(f"Loaded {len(df)} records for {args.year}.")
     analyze_steps(df, args.year, output_dir, args.format, args.font)
+    analyze_distance(df, args.year, output_dir, args.format, args.font)
     analyze_sleep(df, args.tz_offset, args.year, output_dir, args.format, args.font)
-    analyze_heart_rate(df, args.year, output_dir, args.format, args.font)
+    # analyze_heart_rate(df, args.year, output_dir, args.format, args.font)
 
 
 if __name__ == "__main__":
