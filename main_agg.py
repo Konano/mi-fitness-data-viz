@@ -186,8 +186,8 @@ def analyze_steps(
     daily_steps["steps"] = daily_steps["Value"].apply(lambda val: safe_json_loads(val).get("steps", 0))
 
     # Print summary statistics
-    describe_top_days(daily_steps, "steps", "step count")
     print(f"Average daily steps in {year}: {daily_steps['steps'].mean():.0f}")
+    describe_top_days(daily_steps, "steps", "step count")
 
     # Generate monthly and weekday plots
     monthly_avg_steps = daily_steps.groupby("month")["steps"].mean().reset_index()
@@ -241,8 +241,8 @@ def analyze_distance(
     daily_dist["distance"] = daily_dist["Value"].apply(lambda val: safe_json_loads(val).get("distance", 0))
 
     # Print summary statistics
-    describe_top_days(daily_dist, "distance", "distance (meters)", formatter=lambda x: f"{x/1000:.2f} km")
     print(f"Average daily distance in {year}: {daily_dist['distance'].mean()/1000:.2f} km")
+    describe_top_days(daily_dist, "distance", "distance (meters)", formatter=lambda x: f"{x/1000:.2f} km")
 
     # Generate monthly and weekday plots
     monthly_avg_dist = daily_dist.groupby("month")["distance"].mean().reset_index()
@@ -371,7 +371,7 @@ def analyze_sleep(
         f"({str(min_sleep['bedtime_local'].time())[:5]} - {str(min_sleep['wakeup_local'].time())[:5]})"
     )
 
-    # Generate daily, monthly, and weekday plots for sleep data
+    # Generate monthly, and weekday plots for sleep data
     daily_sleep = sleep_data[["date", "duration"]].groupby("date").mean().reset_index()
     describe_top_days(daily_sleep.rename(
         columns={"duration": "minutes"}), "minutes", "sleep duration (minutes)",
@@ -480,6 +480,41 @@ def analyze_sleep(
         ax.set_yticklabels(ytick_labels)
         # ax.set_axisbelow(True)
         export_plot(fig, output_dir / f"sleep_time_weekday.{image_format}", image_format)
+    
+    print(f"Average sleep score in {year}: {sleep_data['score'].mean():.1f}")
+
+    # Generate monthly, and weekday bars for sleep score
+    monthly_avg_sleep_score = sleep_data.groupby("month")["score"].mean().reset_index()
+    with themed_axes(font_family) as (fig, ax):
+        month_labels = monthly_avg_sleep_score["month"].dt.strftime("%b")
+        bars = ax.bar(month_labels, monthly_avg_sleep_score["score"], color=PALETTE["sleep"])
+        for bar, score in zip(bars, monthly_avg_sleep_score["score"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{round(score)}", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Sleep Score per Month in {year}")
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Sleep Score")
+        ax.set_ylim(bottom=40)
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"sleep_score_monthly.{image_format}", image_format)
+    
+    weekday_avg_sleep_score = (
+        sleep_data.groupby("weekday")["score"].mean()
+        .reindex(WEEKDAY_ORDER)
+        .reset_index()
+    )
+    with themed_axes(font_family) as (fig, ax):
+        bars = ax.bar(weekday_avg_sleep_score["weekday"],
+                      weekday_avg_sleep_score["score"], color=PALETTE["sleep"])
+        for bar, score in zip(bars, weekday_avg_sleep_score["score"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{round(score)}", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Sleep Score by Weekday in {year}")
+        ax.set_xlabel("Weekday")
+        ax.set_ylabel("Sleep Score")
+        ax.set_ylim(bottom=40)
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"sleep_score_weekday.{image_format}", image_format)
 
     avg_stages = {
         "Nap": sleep_data["sleep_nap"].mean(),
