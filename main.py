@@ -6,9 +6,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib import font_manager
 
 WEEKDAY_ORDER = [
     "Monday",
@@ -26,6 +27,13 @@ PALETTE = {
     "sleep": "#4B9FE1",
     "heart": "#E0454F",
 }
+
+
+# Install and set xkcd Script font if available
+if "xkcd Script" not in [f.name for f in font_manager.fontManager.ttflist]:
+    print("Loading xkcd Script font...")
+    if Path("./xkcd-script.ttf").exists():
+        font_manager.fontManager.addfont("./xkcd-script.ttf")
 
 
 # Fix dash pattern issue
