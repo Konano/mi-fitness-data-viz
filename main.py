@@ -524,7 +524,7 @@ def analyze_heart_rate(
         ax.set_title(f"Average Heart Rate Per Hour in {year}")
         ax.set_xlabel("Hour of Day")
         ax.set_ylabel("BPM")
-        ax.set_xticks(range(0, 25, 4))  # Set x-axis ticks to 0/4/8/12/16/20/24
+        ax.set_xticks(range(0, 25, 4))
         ax.set_ylim(bottom=bottom_limit)
         # ax.set_axisbelow(True)
         export_plot(fig, output_dir / f"heart_rate_daily.{image_format}", image_format)
