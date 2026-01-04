@@ -68,3 +68,7 @@ python main.py data.csv --output plots --format jpg --font "Comic Neue"
 ## Data privacy
 
 Everything runs locally. The script reads the CSV you supply, computes statistics in-memory, and writes figures to disk. Nothing is uploaded or shared.
+
+## Acknowledgments
+
+Special thanks to the [mi-fitness-yearly-visual](https://github.com/luoingly/mi-fitness-yearly-visual) project, as some parts of this tool were inspired by its implementation.
