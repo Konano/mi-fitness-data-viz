@@ -42,6 +42,10 @@ Install the [xkcd font](https://github.com/ipython/xkcd-font) or point `--font` 
 2. Request a Mi Fitness export.
 3. When the archive arrives, unzip it and locate `hlth_center_fitness_data.csv`.
 
+> **Why not `hlth_center_aggregated_fitness_data.csv`?**
+> 
+> Aggregated files often lose some records. Directly operating on `hlth_center_fitness_data.csv` keeps the original data intact, ensuring chart accuracy. To analyze using aggregated files, run `python main_agg.py hlth_center_aggregated_fitness_data.csv`, whose command-line arguments correspond to `main.py`. However, note that distorted statistical results may appear when source exported data is incomplete.
+
 ### 2. Generate visualizations
 
 ```bash
