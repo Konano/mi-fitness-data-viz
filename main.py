@@ -25,6 +25,7 @@ WEEKDAY_ORDER = [
 
 PALETTE = {
     "steps": "#F08A24",
+    "distance": "#F08A24",
     "sleep": "#4B9FE1",
     "heart": "#E0454F",
 }
@@ -183,17 +184,20 @@ def analyze_steps(
 
     # Extract and aggregate step data
     daily_steps["steps"] = daily_steps["Value"].apply(lambda val: safe_json_loads(val).get("steps", 0))
+    daily_steps["distance"] = daily_steps["Value"].apply(lambda val: safe_json_loads(val).get("distance", 0))
 
     # Print summary statistics
     describe_top_days(daily_steps, "steps", "step count")
     print(f"Average daily steps in {year}: {daily_steps['steps'].mean():.0f}")
+    describe_top_days(daily_steps, "distance", "distance (meters)", formatter=lambda x: f"{x/1000:.2f} km")
+    print(f"Average daily distance in {year}: {daily_steps['distance'].mean()/1000:.2f} km")
 
     # Generate monthly and weekday plots
     daily_steps["month"] = pd.to_datetime(daily_steps["date"]).dt.to_period("M")
-    monthly_avg_steps = daily_steps.groupby("month")["steps"].mean().reset_index()
+    monthly_avg_steps = daily_steps.groupby("month")[["steps", "distance"]].mean().reset_index()
     weekday_avg_steps = (
         daily_steps.assign(weekday=pd.to_datetime(daily_steps["date"]).dt.day_name())
-        .groupby("weekday")["steps"].mean()
+        .groupby("weekday")[["steps", "distance"]].mean()
         .reindex(WEEKDAY_ORDER)
         .reset_index()
     )
@@ -211,6 +215,20 @@ def analyze_steps(
         # ax.set_axisbelow(True)
         export_plot(fig, output_dir / f"steps_monthly.{image_format}", image_format)
 
+    # Plot average daily distance per month
+    with themed_axes(font_family) as (fig, ax):
+        month_labels = monthly_avg_steps["month"].dt.strftime("%b")
+        distance_km = monthly_avg_steps["distance"] / 1000
+        bars = ax.bar(month_labels, distance_km, color=PALETTE["distance"])
+        for bar, distance in zip(bars, monthly_avg_steps["distance"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{distance/1000:.2f} km", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Distance Per Month in {year}")
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Distance (km)")
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"distance_monthly.{image_format}", image_format)
+
     # Plot average daily steps by weekday
     with themed_axes(font_family) as (fig, ax):
         bars = ax.bar(weekday_avg_steps["weekday"],
@@ -223,6 +241,20 @@ def analyze_steps(
         ax.set_ylabel("Steps")
         # ax.set_axisbelow(True)
         export_plot(fig, output_dir / f"steps_weekday.{image_format}", image_format)
+    
+    # Plot average daily distance by weekday
+    with themed_axes(font_family) as (fig, ax):
+        distance_km = weekday_avg_steps["distance"] / 1000
+        bars = ax.bar(weekday_avg_steps["weekday"],
+                      distance_km, color=PALETTE["distance"])
+        for bar, distance in zip(bars, weekday_avg_steps["distance"]):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
+                    f"{distance/1000:.2f} km", ha="center", va="bottom", fontsize=9)
+        ax.set_title(f"Average Daily Distance by Weekday in {year}")
+        ax.set_xlabel("Weekday")
+        ax.set_ylabel("Distance (km)")
+        # ax.set_axisbelow(True)
+        export_plot(fig, output_dir / f"distance_weekday.{image_format}", image_format)
 
 
 def parse_sleep_value(value: Any) -> dict[str, Any]:
