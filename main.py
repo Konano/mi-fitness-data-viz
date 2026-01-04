@@ -3,6 +3,7 @@ import json
 import math
 import sys
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,13 +52,17 @@ mlines.Line2D.draw = _safe_line2d_draw
 
 
 def parse_arguments() -> argparse.Namespace:
+    default_year = 2025
+    while datetime(default_year + 1, 6, 30) < datetime.today():
+        default_year += 1
+
     parser = argparse.ArgumentParser(
         description="Generate yearly steps, sleep patterns, and heart-rate visualizations from Mi Fitness data."
     )
     parser.add_argument("input_csv", type=Path,
                         help="Path to the exported hlth_center_fitness_data CSV file.")
-    parser.add_argument("--year", type=int, default=2025,
-                        help="Target year to analyze (default: 2025).")
+    parser.add_argument("--year", type=int, default=default_year,
+                        help=f"Target year to analyze (default: {default_year}).")
     parser.add_argument("--tz", dest="tz_offset", type=int, default=8,
                         help="Timezone offset from UTC in hours (default: +8).")
     parser.add_argument("--output", type=Path, default=Path("output"),
